@@ -8,8 +8,8 @@ from typing import Annotated
 from uuid import uuid4
 
 import pytest
-from a2a.client import Client, create_text_message_object
-from a2a.types import SendMessageRequest, Message, Role, TaskState
+from a2a.client import Client
+from a2a.types import Message, Role, SendMessageRequest, TaskState
 from kagenti_adk.a2a.extensions.services.platform import (
     PlatformApiExtensionClient,
     PlatformApiExtensionServer,
@@ -90,15 +90,12 @@ async def test_platform_api_extension(file_reader_writer_factory, permissions, s
         else:
             assert task.status.state == TaskState.TASK_STATE_COMPLETED, f"Fail: {task.status.message.parts[0].text}"
 
-            # check that first message is the content of the first_file
-            first_message_text = task.history[0].parts[0].text
-            assert first_message_text == "01234"
-
-            second_message_text = task.history[1].parts[0].text
-            assert second_message_text == "56789"
+            # All yields (string chunks + file part) are accumulated into a single message
+            message = task.history[0]
+            assert message.parts[0].text == "0123456789"
 
             # check that the agent uploaded a new file with correct context_id as content
-            async with load_file(task.history[2].parts[0]) as file:
+            async with load_file(message.parts[1]) as file:
                 assert file.text == context.id
 
 
@@ -126,4 +123,3 @@ async def test_self_registration(self_registration_agent, subtests):
 
         assert provider.state == "online"
         assert "self_registration_agent" in provider.source
-
